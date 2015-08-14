@@ -1,0 +1,16 @@
+Package: warping
+Type: Package
+Title: Probability warping and calibration with undersampling
+Version: 1.0
+Date: 2015-08-14
+Author: Andrea Dal Pozzolo, Olivier Caelen and Gianluca Bontempi
+Maintainer: Andrea Dal Pozzolo <adalpozz@ulb.ac.be>
+Description: The package detect the condition under which undersampling is suppose to provide a better ranking. The posterior probability of a classifier is calibrated to account for the change in class prior due to undersampling.
+License: GPL (>= 3)   
+URL: http://mlg.ulb.ac.be   
+Depends: mlr, foreach, doParallel, ggplot2
+Suggests: randomForest
+
+
+
+

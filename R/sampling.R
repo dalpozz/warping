@@ -39,7 +39,8 @@
 #' \item{pred.cal}{predictions after calibration}
 #' \item{prob}{posterior probability of the classifier for the positive class}
 #' 
-#' @examples task <- makeClassifTask(id="class", data=pima, target=Y, positive=1)
+#' @examples #NOT FINISHED YET
+#' task <- makeClassifTask(id="class", data=pima, target=Y, positive=1)
 #' res <- undersampling(task, lrn, beta, metrics, positive=1, negative=0)
 #' 
 #' 

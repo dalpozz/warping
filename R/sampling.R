@@ -88,7 +88,7 @@ undersampling <- function(task, lrn, beta, metrics, rdesc=NULL, positive, negati
   }
   
   if(ncore > 1){
-    library("parallelMap")
+    #library("parallelMap")
     parallelStart("multicore", ncore) #Starting parallelization in mode=multicore with cpus=ncore.
   }
   
@@ -165,13 +165,13 @@ undersampling <- function(task, lrn, beta, metrics, rdesc=NULL, positive, negati
   
   dd <- probClassUnder[order(probClassUnder$phat.under, decreasing=T), ]
   dd$x <- 1:nrow(dd)
-  library(reshape2)
+  #library(reshape2)
   mdd <- reshape2::melt(dd, measure.vars = c("phat.under", "phat.cal"), variable.name = "prob")  
   tit <- paste0("beta = ", beta, " pi.under = ", round(pi.under, 3), "\n")
   
   if(!is.na(dirPlot)){
     #save(mdd, tit, file=paste0(dirPlot, "/mdd_beta_",beta,".Rdata"))  
-    library(ggplot2)
+    #library(ggplot2)
     #plot the posterior probability from larger to smaller
     #     p <- ggplot(data = mdd, aes(x=x, y = value, colour=prob))
     #     p <- p + geom_line() + labs(list(title = tit, y = "p(+|x) \n"))

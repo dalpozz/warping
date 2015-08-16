@@ -125,7 +125,7 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive=1, costs=NU
   
   #compute the sd of the posterior probabilities for each instance across all the repeated CV
   probSd <- function(pred.data, positive) {
-    library(plyr)
+    #library(plyr)
     #rename the column to be used with ddply
     colnames(pred.data)[which(colnames(pred.data)==paste("prob", positive, sep = "."))] <- "prob.1"
     #take the variance of the probability for each instance over all the CV.
@@ -210,7 +210,7 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive=1, costs=NU
   rin <- makeResampleInstance(rdesc, task = task)
   
   if(ncore > 1){
-    library("parallelMap")
+    #library("parallelMap")
     parallelStart("multicore", ncore) #Starting parallelization in mode=multicore with cpus=ncore.
   }
   
@@ -345,7 +345,7 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive=1, costs=NU
   resALL$high <- factor(resALL$high)
   #write.csv(resALL, "resALL.csv")
   
-  library(reshape2)
+  #library(reshape2)
   meltResALL <- reshape2::melt(resALL, id.vars = c("type", "beta", "high"), variable.name = "metric")
   #meltResALL <- melt(resALL, .(type, beta, high), variable.name="metric")
   #save(meltResALL, file="meltResALL.Rdata")
@@ -357,7 +357,7 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive=1, costs=NU
     pp <- as.numeric(quantile(prob.all, c(0.25, 0.5, 0.75)))
     if(all(pp < 0.001))
       pp <- round(pp, 3)
-    library(ggplot2)
+    #library(ggplot2)
     d <- ggplot(dd, aes(x=prob.1, fill=truth)) + geom_density()
     d <- d + labs(list(title = paste0(task.id, '\n'), x = "\n p(+|x)"))
     for(q in pp)
@@ -385,7 +385,7 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive=1, costs=NU
   }
   
   
-  library(reshape2)
+  #library(reshape2)
   m.var <- setdiff(colnames(probs), c("class", "id", "iter"))
   mdd <- reshape2::melt(probs, measure.vars = m.var, variable.name = "prob")
   mdd$beta <- as.numeric(sapply(strsplit(as.character(mdd$prob), "_", fixed=TRUE), function(x) x[2]))

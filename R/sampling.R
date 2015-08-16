@@ -27,7 +27,7 @@
 #' @param negative value of the negative (majority) class
 #' @param verbose print extra information (logical variable)
 #' @param ncore number of cores to use in multicore computation
-#' @param dirPlot directory where to save plots
+#' @param dirPlot directory where to save plots (set dirPlot=NA to avoid plots)
 #' @param type way to apply undersampling: within or before the CV
 #' @param B  number of models to create for each fold of the CV
 #' 
@@ -39,13 +39,19 @@
 #' \item{pred.cal}{predictions after calibration}
 #' \item{prob}{posterior probability of the classifier for the positive class}
 #' 
-#' @examples #NOT FINISHED YET
-#' task <- makeClassifTask(id="class", data=pima, target=Y, positive=1)
-#' res <- undersampling(task, lrn, beta, metrics, positive=1, negative=0)
-#' 
+#' @examples 
+#' library(mlbench)
+#' data(Ionosphere)
+#' library(mlr)
+#' task <- makeClassifTask(data=Ionosphere, target="Class", positive="bad")
+#' library(randomForest)
+#' rf <- makeLearner("classif.randomForest", predict.type = "prob")
+#' metrics <- list(f1, auc)
+#' library(warping)
+#' res <- undersampling(task, rf, beta=0.6, metrics, positive="bad", negative="good")
 #' 
 #' @export
-undersampling <- function(task, lrn, beta, metrics, rdesc=NULL, positive, negative, verbose=TRUE, dirPlot="plot", ncore=1, type="within", B=1){
+undersampling <- function(task, lrn, beta, metrics, rdesc=NULL, positive, negative, verbose=TRUE, dirPlot=NA, ncore=1, type="within", B=1){
   
   stopifnot(beta > 0, beta <= 1, is.logical(verbose), ncore > 0, type %in% c("within", "before"), B > 0)
   
@@ -102,7 +108,8 @@ undersampling <- function(task, lrn, beta, metrics, rdesc=NULL, positive, negati
   #use the proportion of positives as threshold
   pred.under <- setThreshold(pred.under, pi.under)
   res.under <- mlr::performance(pred.under, metrics, task.under)
-  res.under <- c(res.under, beta=beta, pi=pi.under)
+  brier.under <- BS(getProbabilities(pred.under), pred.under$data$truth, positive)
+  res.under <- c(res.under, beta=beta, pi=pi.under, brier=brier.under)
   if(verbose){
     cat("\n Performance with undersampling repeated", B, "time using rate", beta, "and threshold", pi.under, "\n")
     print(res.under)
@@ -132,7 +139,8 @@ undersampling <- function(task, lrn, beta, metrics, rdesc=NULL, positive, negati
   pred.cal$threshold[which(names(pred.cal$threshold) == negative)] <- 1-th.cal
   
   res.cal <- mlr::performance(pred.cal, metrics, task.under)
-  res.cal <- c(res.cal, beta=beta, pi=pi.under)
+  brier.cal <- BS(getProbabilities(pred.cal), pred.cal$data$truth, positive)
+  res.cal <- c(res.cal, beta=beta, pi=pi.under, brier=brier.cal)
   if(verbose){
     cat("\n Performance with undersampling after calibration using threshold", th.cal, "\n")
     print(res.cal)
@@ -204,7 +212,7 @@ undersampling <- function(task, lrn, beta, metrics, rdesc=NULL, positive, negati
 #' @return values of beta for a give response variable
 #' 
 #' @examples 
-#' y <- rep(c(1, 0, 0, 0, 0, 0), 100)
+#' y <- rep(c(1, 0, 1, 0, 0, 0), 100)
 #' betasUnder(y, positive=1, N = 10, method="perc")
 #' @export
 betasUnder <- function(y, positive=1, N = 10, method="perc"){
@@ -239,7 +247,6 @@ betasUnder <- function(y, positive=1, N = 10, method="perc"){
   
   return(betas)
 }
-
 
 
 

@@ -5,39 +5,73 @@
 # License: GPL (>= 2)                                           
 #*********************************************************************
 
-#' @title warpingWrapper: Wrapper to warpingUnder function
+# #' @title warpingWrapper: Wrapper to warpingUnder function
+# #'
+# #' @description
+# #' Calls the function \code{\link{warpingUnder}} using a classisification algorithm and an unbalanced dataset
+# #'
+# #' @param algo classification algorithm supported by mlr package
+# #' @param dataset dataset used for the analysis
+# #' @param nCV number of repetation of the Cross Validation (CV)
+# #' @param B  number of models to create for each fold of the CV
+# #' @param nFold number of folds of the CV
+# #' @param ncore number of cores to use in multicore computation
+# #' @param ... extra parameters passed to mlr train function
+# #' 
+# #' @return The function returns a list: 
+# #' \item{results}{results of undersampling}
+# #' \item{probs}{probabilities}
+# #' \item{mres}{mres}
+# #' \item{meltResALL}{meltResALL}
+# #' 
+# #' @examples 
+# #' library(warping)
+# #' warpingWrapper("randomForest", "pima", nCV=50, nFold=3)
+# #' 
+# #' 
+# #' @export
+# warpingWrapper <- function(algo="randomForest", dataset="pima", nCV=10, B=1, nFold=100, ncore=1, ...){
+#   stopifnot(length(algo)==1, length(dataset)==1, nCV > 0)
+#   
+#   urlDataset <- "http://www.ulb.ac.be/di/map/adalpozz/imbalanced-datasets/"
+#   load(url(paste0(urlDataset, dataset,".Rdata")))
+#   
+#   cat("dataset:", dataset, "\t algo:", algo, "\n")
+#   d <- ncol(data)
+#   colnames(data) <- c(paste0("V", 1:(d-1)), "Y")
+#   
+#   results <- warpingUnder(Y ~., data, algo, task.id=paste(algo, dataset, sep="_"), 
+#                           positive=1, costs=NULL, verbose=TRUE, dirPlot="plot", 
+#                           ncore, nCV, B, nFold, ...)     
+#   
+#   retunr(results)  
+# }
+
+
+
+#' @title Brier Score
 #'
 #' @description
-#' Calls the function \code{\link{warpingUnder}} using a classisification algorithm and an unbalanced dataset
+#' Function used to compute Brier Score, a measure of probability calibration.
 #'
-#' @param algo classification algorithm supported by mlr package
-#' @param dataset dataset used for the analysis
-#' @param nCV number of repetation of the Cross Validation (CV)
-#' @param B  number of models to create for each fold of the CV
-#' @param nFold number of folds of the CV
-#' @param ncore number of cores to use in multicore computation
-#' @param ... extra parameters passed to mlr train function
+#' @param phat probability of a instance to belogn to the class positive
+#' @param truth class of the instance
+#' @param positive value of the positive (minority) class
 #' 
-#' @return None
+#' @return Brier Score statistics 
 #' 
-#' @examples warpingWrapper("randomForest", "pima", nCV=50, nFold=3)
+#' @examples 
+#' truth <- c(1,1,1,0,0,0,1,0,1,0)
+#' phat <- c(0.9,0.8,0.4,0.5,0.3,0.2,0.8,0.3,0.8,0.3)
+#' BS(phat, truth, 1)
+#' 
 #' @export
-warpingWrapper <- function(algo="randomForest", dataset="pima", nCV=10, B=1, nFold=100, ncore=1, ...){
-  stopifnot(length(algo)==1, length(dataset)==1, nCV > 0)
-  
-  urlDataset <- "http://www.ulb.ac.be/di/map/adalpozz/imbalanced-datasets/"
-  load(url(paste0(urlDataset, dataset,".Rdata")))
-  
-  cat("dataset:", dataset, "\t algo:", algo, "\n")
-  d <- ncol(data)
-  colnames(data) <- c(paste0("V", 1:(d-1)), "Y")
-  
-  results <- warpingUnder(Y ~., data, algo, task.id=paste(algo, dataset, sep="_"), 
-                       positive=1, costs=NULL, verbose=TRUE, dirPlot="plot", 
-                       ncore, nCV, B, nFold, ...)     
-  
-  retunr(results)  
-}
+BS <- function(phat, truth, positive) {
+  stopifnot(length(phat) == length(truth), positive %in% truth)
+  y <- as.numeric(truth == positive)
+  mean((y - phat)^2)
+}  
+
 
 
 #***********************
@@ -61,24 +95,34 @@ warpingWrapper <- function(algo="randomForest", dataset="pima", nCV=10, B=1, nFo
 #' @param B  number of models to create for each fold of the CV
 #' @param nFold number of folds of the CV
 #' @param ncore number of cores to use in multicore computation
-#' @param dirPlot directory where to save plots
+#' @param dirPlot directory where to save plots (set dirPlot=NA to avoid plots)
 #' @param verbose print extra information (logical variable)
 #' @param ... extra parameters passed to mlr train function
 #' 
-#' @return None
+#' @return The function returns a list: 
+#' \item{results}{results of undersampling}
+#' \item{probs}{probabilities}
+#' \item{mres}{mres}
+#' \item{meltResALL}{meltResALL}
 #' 
-#' @examples data(GermanCredit, package = "caret")
-#' res <- warpingUnder(Class ~., GermanCredit, "rpart", task.id="rpart_credit", positive="Bad", nCV=3, B=1, nFold=5, verbose=TRUE)
+#' @examples 
+#' library(mlbench) 
+#' data(Ionosphere)
+#' library(warping)
+#' res <- warpingUnder(Class ~., Ionosphere, "randomForest", task.id="rf_Ionosphere", positive="bad", nCV=3, B=1, nFold=5)
 #' 
 #' @export
-warpingUnder <- function(formula, data, algo, task.id="cv", positive="NA", costs=NULL, nCV=10, B=1, nFold=100, ncore = 1, dirPlot="plot", verbose=TRUE, ...){
+warpingUnder <- function(formula, data, algo, task.id="cv", positive=1, costs=NULL, nCV=10, B=1, nFold=100, ncore = 1, dirPlot=NA, verbose=TRUE, ...){
   
   
   stopifnot(class(formula) == "formula", 
             NCOL(data)>1, NROW(data)>1, 
             is.logical(verbose), ncore > 0, 
             nCV >= 0, B > 0, nFold > 1)
-    
+  
+  #derivative of ps w.r.t. p, where ps (p) is the posterior with (without) undersampling
+  dps <- function(p, beta) beta / (p +beta * (1-p))^2
+  
   #compute the sd of the posterior probabilities for each instance across all the repeated CV
   probSd <- function(pred.data, positive) {
     library(plyr)
@@ -89,9 +133,10 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive="NA", costs
     dt$sd.prob
   }
   
-  if (!file.exists(dirPlot))
-    dir.create(dirPlot)  
-
+  if (!is.na(dirPlot))
+    if (!file.exists(dirPlot))
+      dir.create(dirPlot)  
+  
   
   target <- as.character(formula[[2]])
   tgt <- which(names(data) == target)
@@ -137,14 +182,12 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive="NA", costs
   ## Calculate the theoretical threshold for the positive class
   th <- costs[2,1]/(costs[2,1] + costs[1,2])  #FP cost / (FP cost + FN cost)
   
-  #make a measure for the specific cost
-  taskCosts <- makeCostMeasure(id = "taskCosts", costs = costs, task = task, best = 0, worst = max(costs))  
-  metrics <- list(taskCosts, mmce, gmean, f1, mlr::auc, ppv, tpr, ber, brier, ql, pk, p5, p10, q25, q50, q75) #ap,
-  submetrics <- list(taskCosts, gmean, f1)
+  metrics <- list(gmean, f1, ppv, tpr) #mlr::auc
+  submetrics <- list(gmean, f1)
   
   if(nCV > 1) #change the aggration method in the case of repeated CV
     metrics <- lapply(metrics, function(x)  setAggregation(x, testgroup.mean))  
-
+  
   
   #predict once with all samples
   mod <- train(lrn, task)
@@ -225,8 +268,9 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive="NA", costs
   higher <- dpsMat >= sdRatio
   probHigher <- apply(higher, 2, function(x) mean(x, na.rm=TRUE))
   cat("\n probability of the derivative being higher \n")
+  names(probHigher) <- sub("pred.under.b", "beta", names(probHigher))
   print(probHigher)
-  write.csv(probHigher, file="probHigher.csv")
+  #write.csv(probHigher, file="probHigher.csv")
   
   resBoth <- resLow <- resHigh <- NULL
   for(b in 1:length(betas.under)){
@@ -234,17 +278,28 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive="NA", costs
     preds.under.b <- preds.under[[b]]
     id.prob <- which(colnames(preds.under.b) == paste("prob", positive, sep="."))
     y <- factor(preds.under.b$truth == positive, levels=c(TRUE, FALSE), labels=c(1, 0))
-  
+    
     #to do compute the performances separately for each iteration
     
     id.high <- which(higher.b)
     if(length(id.high) > 0){
       pred.under.high <- subset(preds.under.b, id %in% id.high)
       pred.unbal.high <- subset(pred.th$data, id %in% id.high)
-      y.high <- factor(pred.under.high$truth == positive, levels=c(TRUE, FALSE), labels=c(1, 0))
-      res.under.high <- probMetrics(pred.under.high[ ,id.prob], y.high, verbose=FALSE)
-      res.unbal.high <- probMetrics(pred.unbal.high[ ,id.prob], y.high, verbose=FALSE)
-      res.high <- rbind(data.frame(res.unbal.high, type="unbal"), data.frame(res.under.high, type="under"))
+      
+      dd.under <- res.b$pred.under
+      dd.under$data <- pred.under.high
+      res.under.high <- mlr::performance(dd.under, metrics, task.under)
+      dd.unbal <- pred.th
+      dd.under$data <- pred.unbal.high
+      res.unbal.high <- mlr::performance(dd.under, metrics, task)
+      res.high <- data.frame(rbind(res.unbal.high, res.under.high))
+      res.high$type <- c("unbal", "under")
+      
+      #       y.high <- factor(pred.under.high$truth == positive, levels=c(TRUE, FALSE), labels=c(1, 0))
+      #       res.under.high <- probMetrics(pred.under.high[ ,id.prob], y.high, verbose=FALSE)
+      #       res.unbal.high <- probMetrics(pred.unbal.high[ ,id.prob], y.high, verbose=FALSE)
+      #       res.high <- rbind(data.frame(res.unbal.high, type="unbal"), data.frame(res.under.high, type="under"))
+      
       res.high$beta <- betas.under[b]
       resHigh <- rbind(resHigh, res.high)      
     }
@@ -253,61 +308,81 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive="NA", costs
     if(length(id.low) > 0){
       pred.under.low <- subset(preds.under.b, id %in% id.low)
       pred.unbal.low <- subset(pred.th$data, id %in% id.low) 
-      y.low <- factor(pred.under.low$truth == positive, levels=c(TRUE, FALSE), labels=c(1, 0))
-      res.under.low <- probMetrics(pred.under.low[ ,id.prob], y.low, verbose=FALSE)
-      res.unbal.low <- probMetrics(pred.unbal.low[ ,id.prob], y.low, verbose=FALSE)
-      res.low <- rbind(data.frame(res.unbal.low, type="unbal"), data.frame(res.under.low, type="under"))
+      
+      dd.under <- res.b$pred.under
+      dd.under$data <- pred.under.low
+      res.under.low <- mlr::performance(dd.under, metrics, task.under)
+      dd.unbal <- pred.th
+      dd.under$data <- pred.unbal.low
+      res.unbal.low <- mlr::performance(dd.under, metrics, task)
+      res.low <- data.frame(rbind(res.unbal.low, res.under.low))
+      res.low$type <- c("unbal", "under")
+      
+      #       y.low <- factor(pred.under.low$truth == positive, levels=c(TRUE, FALSE), labels=c(1, 0))
+      #       res.under.low <- probMetrics(pred.under.low[ ,id.prob], y.low, verbose=FALSE)
+      #       res.unbal.low <- probMetrics(pred.unbal.low[ ,id.prob], y.low, verbose=FALSE)
+      #       res.low <- rbind(data.frame(res.unbal.low, type="unbal"), data.frame(res.under.low, type="under"))
+      
       res.low$beta <- betas.under[b]
       resLow <- rbind(resLow, res.low)
     }
     
-    res.under.both <- probMetrics(preds.under.b[ ,id.prob], y, verbose=FALSE)
-    res.unbal.both <- probMetrics(pred.th$data[ ,id.prob], y, verbose=FALSE)
-    res.both <- rbind(data.frame(res.unbal.both, type="unbal"), data.frame(res.under.both, type="under"))
+    dd.under <- res.b$pred.under
+    dd.under$data <- preds.under.b
+    res.under.both <- mlr::performance(dd.under, metrics, task.under)
+    res.unbal.both <- mlr::performance(pred.th, metrics, task)
+    res.both <- data.frame(rbind(res.unbal.both, res.under.both))
+    res.both$type <- c("unbal", "under")
+    
+    #     res.under.both <- probMetrics(preds.under.b[ ,id.prob], y, verbose=FALSE)
+    #     res.unbal.both <- probMetrics(pred.th$data[ ,id.prob], y, verbose=FALSE)
+    #     res.both <- rbind(data.frame(res.unbal.both, type="unbal"), data.frame(res.under.both, type="under"))
+    
     res.both$beta <- betas.under[b]
     resBoth <- rbind(resBoth, res.both)
   }
   resALL <- rbind(data.frame(resHigh, high=TRUE), data.frame(resLow, high=FALSE), data.frame(resBoth, high="ALL"))
   resALL$high <- factor(resALL$high)
-  write.csv(resALL, "resALL.csv")
+  #write.csv(resALL, "resALL.csv")
   
   library(reshape2)
   meltResALL <- reshape2::melt(resALL, id.vars = c("type", "beta", "high"), variable.name = "metric")
   #meltResALL <- melt(resALL, .(type, beta, high), variable.name="metric")
-  save(meltResALL, file="meltResALL.Rdata")
+  #save(meltResALL, file="meltResALL.Rdata")
   
+  if (!is.na(dirPlot)){
+    #plot the density of the posterior probability
+    dd <- predcv$data
+    colnames(dd)[which(colnames(dd)==paste("prob", positive, sep = "."))] <- "prob.1"
+    pp <- as.numeric(quantile(prob.all, c(0.25, 0.5, 0.75)))
+    if(all(pp < 0.001))
+      pp <- round(pp, 3)
+    library(ggplot2)
+    d <- ggplot(dd, aes(x=prob.1, fill=truth)) + geom_density()
+    d <- d + labs(list(title = paste0(task.id, '\n'), x = "\n p(+|x)"))
+    for(q in pp)
+      d <- d + geom_vline(xintercept = q, colour="blue", linetype = "longdash")
+    ggsave(filename=paste0(dirPlot, "/dens_beta_1.pdf"), plot=d)
+    ggsave(filename=paste0(dirPlot, "/dens_beta_1.svg"), plot=d)
     
-  #plot the density of the posterior probability
-  dd <- predcv$data
-  colnames(dd)[which(colnames(dd)==paste("prob", positive, sep = "."))] <- "prob.1"
-  pp <- as.numeric(quantile(prob.all, c(0.25, 0.5, 0.75)))
-  if(all(pp < 0.001))
-    pp <- round(pp, 3)
-  library(ggplot2)
-  d <- ggplot(dd, aes(x=prob.1, fill=truth)) + geom_density()
-  d <- d + labs(list(title = paste0(task.id, '\n'), x = "\n p(+|x)"))
-  for(q in pp)
-    d <- d + geom_vline(xintercept = q, colour="blue", linetype = "longdash")
-  ggsave(filename=paste0(dirPlot, "/dens_beta_1.pdf"), plot=d)
-  ggsave(filename=paste0(dirPlot, "/dens_beta_1.svg"), plot=d)
-  
-  #plot the derivative and sdRatioMean
-  sdRatioMean <- apply(sdRatio, 2, function(x) mean(x[is.finite(x)]))
-  vardd <- NULL
-  for(z in 1:length(pp))
-    vardd <- rbind(vardd, data.frame(beta=betas.under, sdRatioMean, p=pp[z], dps=dps(pp[z], betas.under)))
-  vardd$p <- factor(vardd$p)
-  p <- ggplot(data = vardd, aes(x=beta, y = dps, colour=p))
-  p <- p + geom_line() + ggtitle(paste0(task.id, "\n"))
-  p <- p + geom_hline(yintercept = 1, colour="blue", linetype = "longdash")
-  p <- p + geom_line(aes(x=beta, y = sdRatioMean), colour="black", linetype = "longdash")
-  p <- p + ylim(0, max(vardd$dps, vardd$sdRatioMean)) + theme_bw()
-  ggsave(filename=paste0(dirPlot, "/dps_",task.id,".pdf"), plot=p)
-  ggsave(filename=paste0(dirPlot, "/dps_",task.id,".svg"), plot=p)
-  #   library(gridExtra)
-  #   pdf(paste0(dirPlot, "/dps_p_",task.id,".pdf"))
-  #   grid.arrange(arrangeGrob(p, d, ncol=2))
-  #   dev.off()
+    #plot the derivative and sdRatioMean
+    sdRatioMean <- apply(sdRatio, 2, function(x) mean(x[is.finite(x)]))
+    vardd <- NULL
+    for(z in 1:length(pp))
+      vardd <- rbind(vardd, data.frame(beta=betas.under, sdRatioMean, p=pp[z], dps=dps(pp[z], betas.under)))
+    vardd$p <- factor(vardd$p)
+    p <- ggplot(data = vardd, aes(x=beta, y = dps, colour=p))
+    p <- p + geom_line() + ggtitle(paste0(task.id, "\n"))
+    p <- p + geom_hline(yintercept = 1, colour="blue", linetype = "longdash")
+    p <- p + geom_line(aes(x=beta, y = sdRatioMean), colour="black", linetype = "longdash")
+    p <- p + ylim(0, max(vardd$dps, vardd$sdRatioMean)) + theme_bw()
+    ggsave(filename=paste0(dirPlot, "/dps_",task.id,".pdf"), plot=p)
+    ggsave(filename=paste0(dirPlot, "/dps_",task.id,".svg"), plot=p)
+    #   library(gridExtra)
+    #   pdf(paste0(dirPlot, "/dps_p_",task.id,".pdf"))
+    #   grid.arrange(arrangeGrob(p, d, ncol=2))
+    #   dev.off()
+  }
   
   
   library(reshape2)
@@ -319,21 +394,24 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive="NA", costs
   mdd[which(mdd$type=="unbal"), 'beta'] <- 1
   mdd$lambda <- with(mdd, (sqrt(beta)-beta)/(1-beta))
   
-  res.all <- c(res.all, beta=1, pi=N.pos/N)
-  res.th <- c(res.th, beta=1, pi=N.pos/N) 
+  brier.all <- BS(getProbabilities(pred.all), pred.all$data$truth, positive)
+  res.all <- c(res.all, beta=1, pi=N.pos/N, brier=brier.all)
+  brier.th <- BS(getProbabilities(pred.th), pred.th$data$truth, positive)
+  res.th <- c(res.th, beta=1, pi=N.pos/N, brier=brier.th) 
+  
   results <- rbind(res.all, res.th, res.under, res.ucal)
   m <- colnames(results)
   m <- sub("tpr", "recall", m)
   m <- sub("ppv", "precision", m)
   colnames(results) <- m
-  save(results, file="results.Rdata")
-  write.csv(results, file=paste0("results_", task.id, ".csv"))
+  #save(results, file="results.Rdata")
+  #write.csv(results, file=paste0("results_", task.id, ".csv"))
   
   df <- data.frame(results, prob=row.names(results))
   mres <- reshape2::melt(df, id.vars=c("prob", "beta"), variable.name = "metric")
   mres$type <- sapply(strsplit(as.character(mres$prob), ".", fixed=TRUE), function(x) x[2])
   mres$type <- factor(sapply(strsplit(mres$type, "_", fixed=TRUE), function(x) x[1]))
-  save(mres, file="mres.Rdata")
+  #save(mres, file="mres.Rdata")
   
   
   l <- list(results=results, probs=probs, mres=mres, meltResALL=meltResALL)

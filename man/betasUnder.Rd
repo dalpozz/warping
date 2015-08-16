@@ -22,7 +22,7 @@ values of beta for a give response variable
 Defines the possible levels of undersampling given the class proporiton
 }
 \examples{
-y <- rep(c(1, 0, 0, 0, 0, 0), 100)
+y <- rep(c(1, 0, 1, 0, 0, 0), 100)
 betasUnder(y, positive=1, N = 10, method="perc")
 }
 

@@ -5,7 +5,7 @@
 \title{Undersampling}
 \usage{
 undersampling(task, lrn, beta, metrics, rdesc = NULL, positive, negative,
-  verbose = TRUE, dirPlot = "plot", ncore = 1, type = "within", B = 1)
+  verbose = TRUE, dirPlot = NA, ncore = 1, type = "within", B = 1)
 }
 \arguments{
 \item{task}{classification task to perform (see mlr package)}
@@ -24,7 +24,7 @@ undersampling(task, lrn, beta, metrics, rdesc = NULL, positive, negative,
 
 \item{verbose}{print extra information (logical variable)}
 
-\item{dirPlot}{directory where to save plots}
+\item{dirPlot}{directory where to save plots (set dirPlot=NA to avoid plots)}
 
 \item{ncore}{number of cores to use in multicore computation}
 
@@ -45,7 +45,14 @@ Undersampling the majority class with rate = beta, where beta is the probability
 The probability estimate is calibrated to adjust it for class prior change
 }
 \examples{
-task <- makeClassifTask(id="class", data=pima, target=Y, positive=1)
-res <- undersampling(task, lrn, beta, metrics, positive=1, negative=0)
+library(mlbench)
+data(Ionosphere)
+library(mlr)
+task <- makeClassifTask(data=Ionosphere, target="Class", positive="bad")
+library(randomForest)
+rf <- makeLearner("classif.randomForest", predict.type = "prob")
+metrics <- list(f1, auc)
+library(warping)
+res <- undersampling(task, rf, beta=0.6, metrics, positive="bad", negative="good")
 }
 

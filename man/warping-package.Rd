@@ -3,12 +3,11 @@
 \alias{warping}
 \docType{package}
 \title{
-What the package does (short line)
-~~ package title ~~
+Probability warping and calibration with undersampling
 }
 \description{
-More about what it does (maybe more than one line)
-~~ A concise (1-5 lines) description of the package ~~
+The package detect the condition under which undersampling is suppose to provide a better ranking. 
+The posterior probability of a classifier is calibrated to account for the change in class prior due to undersampling.
 }
 \details{
 \tabular{ll}{
@@ -16,25 +15,27 @@ Package: \tab warping\cr
 Type: \tab Package\cr
 Version: \tab 1.0\cr
 Date: \tab 2015-08-14\cr
-License: \tab What license is it under?\cr
+License: \tab GPL (>= 3)\cr
 }
-~~ An overview of how to use the package, including the most important functions ~~
+%~~ An overview of how to use the package, including the most important functions ~~
 }
 \author{
-Who wrote it
+Andrea Dal Pozzolo, Olivier Caelen and Gianluca Bontempi
 
-Maintainer: Who to complain to <yourfault@somewhere.net>
-~~ The author and/or maintainer of the package ~~
+Maintainer: Andrea Dal Pozzolo <adalpozz@ulb.ac.be>
 }
 \references{
-~~ Literature or other references for background information ~~
+
 }
-~~ Optionally other standard keywords, one per line, from file KEYWORDS in the R documentation directory ~~
-\keyword{ package }
-\seealso{
-~~ Optional links to other man pages, e.g. ~~
-~~ \code{\link[<pkg>:<pkg>-package]{<pkg>}} ~~
-}
+%~~ Optionally other standard keywords, one per line, from file KEYWORDS in the R documentation directory ~~
+%\keyword{ package }
+%\seealso{
+%~~ Optional links to other man pages, e.g. ~~
+%~~ \code{\link[<pkg>:<pkg>-package]{<pkg>}} ~~
+%}
 \examples{
-~~ simple examples of the most important functions ~~
+library(mlbench)
+data(Ionosphere)
+library(warping)
+res <- warpingUnder(Class ~., Ionosphere, "randomForest", task.id="rf_Ionosphere", positive="bad", nCV=3, B=1, nFold=5)
 }

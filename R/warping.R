@@ -5,74 +5,6 @@
 # License: GPL (>= 2)                                           
 #*********************************************************************
 
-# #' @title warpingWrapper: Wrapper to warpingUnder function
-# #'
-# #' @description
-# #' Calls the function \code{\link{warpingUnder}} using a classisification algorithm and an unbalanced dataset
-# #'
-# #' @param algo classification algorithm supported by mlr package
-# #' @param dataset dataset used for the analysis
-# #' @param nCV number of repetation of the Cross Validation (CV)
-# #' @param B  number of models to create for each fold of the CV
-# #' @param nFold number of folds of the CV
-# #' @param ncore number of cores to use in multicore computation
-# #' @param ... extra parameters passed to mlr train function
-# #' 
-# #' @return The function returns a list: 
-# #' \item{results}{results of undersampling}
-# #' \item{probs}{probabilities}
-# #' \item{mres}{mres}
-# #' \item{meltResALL}{meltResALL}
-# #' 
-# #' @examples 
-# #' library(warping)
-# #' warpingWrapper("randomForest", "pima", nCV=50, nFold=3)
-# #' 
-# #' 
-# #' @export
-# warpingWrapper <- function(algo="randomForest", dataset="pima", nCV=10, B=1, nFold=100, ncore=1, ...){
-#   stopifnot(length(algo)==1, length(dataset)==1, nCV > 0)
-#   
-#   urlDataset <- "http://www.ulb.ac.be/di/map/adalpozz/imbalanced-datasets/"
-#   load(url(paste0(urlDataset, dataset,".Rdata")))
-#   
-#   cat("dataset:", dataset, "\t algo:", algo, "\n")
-#   d <- ncol(data)
-#   colnames(data) <- c(paste0("V", 1:(d-1)), "Y")
-#   
-#   results <- warpingUnder(Y ~., data, algo, task.id=paste(algo, dataset, sep="_"), 
-#                           positive=1, costs=NULL, verbose=TRUE, dirPlot="plot", 
-#                           ncore, nCV, B, nFold, ...)     
-#   
-#   retunr(results)  
-# }
-
-
-
-#' @title Brier Score
-#'
-#' @description
-#' Function used to compute Brier Score, a measure of probability calibration.
-#'
-#' @param phat probability of a instance to belogn to the class positive
-#' @param truth class of the instance
-#' @param positive value of the positive (minority) class
-#' 
-#' @return Brier Score statistics 
-#' 
-#' @examples 
-#' truth <- c(1,1,1,0,0,0,1,0,1,0)
-#' phat <- c(0.9,0.8,0.4,0.5,0.3,0.2,0.8,0.3,0.8,0.3)
-#' BS(phat, truth, 1)
-#' 
-#' @export
-BS <- function(phat, truth, positive) {
-  stopifnot(length(phat) == length(truth), positive %in% truth)
-  y <- as.numeric(truth == positive)
-  mean((y - phat)^2)
-}  
-
-
 
 #***********************
 # The following code is used to asses the wrapping effect 
@@ -394,9 +326,9 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive=1, costs=NU
   mdd[which(mdd$type=="unbal"), 'beta'] <- 1
   mdd$lambda <- with(mdd, (sqrt(beta)-beta)/(1-beta))
   
-  brier.all <- BS(getProbabilities(pred.all), pred.all$data$truth, positive)
+  brier.all <- brierScore(getProbabilities(pred.all), pred.all$data$truth, positive)
   res.all <- c(res.all, beta=1, pi=N.pos/N, brier=brier.all)
-  brier.th <- BS(getProbabilities(pred.th), pred.th$data$truth, positive)
+  brier.th <- brierScore(getProbabilities(pred.th), pred.th$data$truth, positive)
   res.th <- c(res.th, beta=1, pi=N.pos/N, brier=brier.th) 
   
   results <- rbind(res.all, res.th, res.under, res.ucal)
@@ -423,3 +355,25 @@ warpingUnder <- function(formula, data, algo, task.id="cv", positive=1, costs=NU
 
 
 
+#' @title Brier Score
+#'
+#' @description
+#' Function used to compute Brier Score, a measure of probability calibration.
+#' 
+#' @param phat probability of a instance to belogn to the class positive
+#' @param truth class of the instance
+#' @param positive value of the positive (minority) class
+#' 
+#' @return Brier Score statistics 
+#' 
+#' @examples 
+#' truth <- c(1,1,1,0,0,0,1,0,1,0)
+#' phat <- c(0.9,0.8,0.4,0.5,0.3,0.2,0.8,0.3,0.8,0.3)
+#' brierScore(phat, truth, 1)
+#' 
+#' @export
+brierScore <- function(phat, truth, positive=1) {
+  stopifnot(length(phat) == length(truth), positive %in% truth)
+  y <- as.numeric(truth == positive)
+  mean((y - phat)^2)
+}  

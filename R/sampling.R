@@ -108,7 +108,7 @@ undersampling <- function(task, lrn, beta, metrics, rdesc=NULL, positive, negati
   #use the proportion of positives as threshold
   pred.under <- setThreshold(pred.under, pi.under)
   res.under <- mlr::performance(pred.under, metrics, task.under)
-  brier.under <- BS(getProbabilities(pred.under), pred.under$data$truth, positive)
+  brier.under <- brierScore(getProbabilities(pred.under), pred.under$data$truth, positive)
   res.under <- c(res.under, beta=beta, pi=pi.under, brier=brier.under)
   if(verbose){
     cat("\n Performance with undersampling repeated", B, "time using rate", beta, "and threshold", pi.under, "\n")
@@ -139,7 +139,7 @@ undersampling <- function(task, lrn, beta, metrics, rdesc=NULL, positive, negati
   pred.cal$threshold[which(names(pred.cal$threshold) == negative)] <- 1-th.cal
   
   res.cal <- mlr::performance(pred.cal, metrics, task.under)
-  brier.cal <- BS(getProbabilities(pred.cal), pred.cal$data$truth, positive)
+  brier.cal <- brierScore(getProbabilities(pred.cal), pred.cal$data$truth, positive)
   res.cal <- c(res.cal, beta=beta, pi=pi.under, brier=brier.cal)
   if(verbose){
     cat("\n Performance with undersampling after calibration using threshold", th.cal, "\n")
